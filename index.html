@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>高数积分公式记忆工具</title>
+
+  <!-- KaTeX 样式 & 脚本（defer 保证先加载再执行本文脚本）-->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+  />
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+  ></script>
+
+  <style>
+    /* ===== 基础排版 ===== */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Hiragino Sans GB",
+        "Microsoft YaHei", sans-serif;
+      background: linear-gradient(135deg, #f0f4ff, #e6f9ff);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #222;
+    }
+    h1 {
+      margin: 0 0 20px;
+      font-size: 1.8rem;
+      text-align: center;
+    }
+
+    /* ===== 布局容器 ===== */
+    .container {
+      width: 90%;
+      max-width: 640px;
+      padding: 20px;
+    }
+
+    /* ===== 卡片 ===== */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 24px 20px;
+      transition: transform 0.3s ease;
+      margin-bottom: 24px;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+    }
+    .formula {
+      font-size: 1.55rem;
+      text-align: center;
+      margin: 16px 0;
+      word-break: break-word;
+    }
+    .hidden {
+      display: none;
+    }
+
+    /* ===== 按钮通用 ===== */
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 1rem;
+      transition: transform 0.2s ease;
+      color: #fff;
+    }
+    button:hover {
+      transform: scale(1.06);
+    }
+
+    /* ===== 交互按钮配色 ===== */
+    #showAnswer {
+      background: #2196f3;
+      margin: 0 auto 14px auto;
+      display: block;
+      color: #fff;
+    }
+    .feedback-buttons {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .remember {
+      background: #4caf50;
+    }
+    .vague {
+      background: #ff9800;
+    }
+    .forget {
+      background: #f44336;
+    }
+
+    /* ===== 控制按钮 ===== */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .controls button {
+      flex: 1 1 30%;
+      background: #607d8b;
+      color: #fff;
+    }
+
+    /* ===== 薄弱列表 ===== */
+    #weaknessList {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+    #weaknessList ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    #weaknessList li {
+      margin: 12px 0;
+    }
+
+    /* ===== 移动端微调 ===== */
+    @media (max-width: 480px) {
+      .formula {
+        font-size: 1.25rem;
+      }
+      button {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>高等数学积分公式记忆工具</h1>
+
+    <!-- ===== 公式卡片 ===== -->
+    <div id="card" class="card">
+      <div id="question" class="formula">点击下方 “开始复习” ⏱</div>
+      <div id="answer" class="formula hidden"></div>
+      <button id="showAnswer" class="hidden">显示答案</button>
+
+      <div class="feedback-buttons hidden" id="feedbackGroup">
+        <button class="remember" id="rememberBtn">我记得</button>
+        <button class="vague" id="vagueBtn">模糊</button>
+        <button class="forget" id="forgetBtn">不记得</button>
+      </div>
+    </div>
+
+    <!-- ===== 功能按钮 ===== -->
+    <div class="controls">
+      <button id="startReview">开始复习</button>
+      <button id="weaknessTraining">薄弱点强化</button>
+      <button id="viewWeakness">查看薄弱点</button>
+    </div>
+
+    <!-- ===== 薄弱公式清单 ===== -->
+    <div id="weaknessList" class="hidden"></div>
+  </div>
+
+  <script defer>
+    /******************** 1. 数据结构 ************************/
+    /**
+     * 初始 20 条常用积分公式（question/answer 为 LaTeX）
+     * 加入 level / lastReviewed / nextReview / weak 属性后会存入 localStorage
+     */
+    const baseFormulas = [
+      { id: 1, question: "\\int x^{n}\\,dx", answer: "\\frac{x^{n+1}}{n+1}+C" },
+      { id: 2, question: "\\int \\sin x\\,dx", answer: "-\\cos x+C" },
+      { id: 3, question: "\\int \\cos x\\,dx", answer: "\\sin x+C" },
+      { id: 4, question: "\\int \\sec^{2}x\\,dx", answer: "\\tan x+C" },
+      { id: 5, question: "\\int \\csc^{2}x\\,dx", answer: "-\\cot x+C" },
+      { id: 6, question: "\\int \\sec x\\tan x\\,dx", answer: "\\sec x+C" },
+      { id: 7, question: "\\int \\csc x\\cot x\\,dx", answer: "-\\csc x+C" },
+      { id: 8, question: "\\int e^{ax}\\,dx", answer: "\\frac{1}{a}e^{ax}+C" },
+      { id: 9, question: "\\int a^{x}\\,dx", answer: "\\frac{a^{x}}{\\ln a}+C" },
+      { id: 10, question: "\\int \\frac{1}{x}\\,dx", answer: "\\ln|x|+C" },
+      {
+        id: 11,
+        question: "\\int \\ln x\\,dx",
+        answer: "x\\ln x - x + C",
+      },
+      { id: 12, question: "\\int \\tan x\\,dx", answer: "-\\ln|\\cos x|+C" },
+      { id: 13, question: "\\int \\cot x\\,dx", answer: "\\ln|\\sin x|+C" },
+      {
+        id: 14,
+        question: "\\int \\sec x\\,dx",
+        answer: "\\ln|\\sec x + \\tan x|+C",
+      },
+      {
+        id: 15,
+        question: "\\int \\frac{1}{x^{2}+a^{2}}\\,dx",
+        answer: "\\frac{1}{a}\\arctan\\left(\\frac{x}{a}\\right)+C",
+      },
+      {
+        id: 16,
+        question: "\\int \\frac{1}{\\sqrt{a^{2}-x^{2}}}\\,dx",
+        answer: "\\arcsin\\left(\\frac{x}{a}\\right)+C",
+      },
+      { id: 17, question: "\\int \\sinh x\\,dx", answer: "\\cosh x + C" },
+      { id: 18, question: "\\int \\cosh x\\,dx", answer: "\\sinh x + C" },
+      {
+        id: 19,
+        question: "\\int x e^{ax}\\,dx",
+        answer: "\\frac{e^{ax}}{a^{2}}(ax-1)+C",
+      },
+      {
+        id: 20,
+        question: "\\int \\frac{\\ln x}{x}\\,dx",
+        answer: "\\tfrac{1}{2}(\\ln x)^{2}+C",
+      },
+    ];
+
+    const STORAGE_KEY = "integralFormulaSRS";
+    const MS_DAY = 86_400_000;
+
+    /******************** 2. 状态初始化 / 持久化 ************************/
+    // 将 localStorage 中的进度合并到 baseFormulas
+    const formulas = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    baseFormulas.forEach((f) => {
+      const saved = formulas[f.id] || {};
+      Object.assign(f, {
+        level: saved.level ?? 0,
+        lastReviewed: saved.lastReviewed ?? null,
+        nextReview: saved.nextReview ?? Date.now(), // 立即可复习
+        weak: saved.weak ?? false,
+      });
+    });
+
+    /** 保存当前状态到 localStorage */
+    const saveState = () => {
+      const obj = {};
+      baseFormulas.forEach((f) => {
+        obj[f.id] = {
+          level: f.level,
+          lastReviewed: f.lastReviewed,
+          nextReview: f.nextReview,
+          weak: f.weak,
+        };
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+    };
+
+    /******************** 3. DOM 工具 ************************/
+    const $ = (id) => document.getElementById(id);
+    const questionEl = $("question");
+    const answerEl = $("answer");
+    const showAnswerBtn = $("showAnswer");
+    const feedbackGroup = $("feedbackGroup");
+    const weaknessListEl = $("weaknessList");
+
+    /** 使用 KaTeX 渲染 LaTeX 字符串到元素 */
+    function renderFormula(el, latex) {
+      katex.render(latex, el, { throwOnError: false });
+    }
+
+    /******************** 4. SRS 队列逻辑 ************************/
+    let reviewQueue = []; // 当前待复习/强化的公式数组
+    let current = null; // 当前显示的公式
+    let mode = "idle"; // "review" | "weak" | "idle"
+
+    /** 构建到期复习队列（level 升序优先） */
+    function buildReviewQueue() {
+      const now = Date.now();
+      reviewQueue = baseFormulas
+        .filter((f) => f.nextReview <= now)
+        .sort((a, b) => a.level - b.level);
+    }
+
+    /** 构建薄弱点训练队列 */
+    function buildWeakQueue() {
+      reviewQueue = baseFormulas.filter((f) => f.weak);
+    }
+
+    /** 显示下一张卡片 */
+    function showNext() {
+      current = reviewQueue.shift();
+      if (!current) {
+        // 队列为空
+        questionEl.textContent =
+          mode === "weak"
+            ? "薄弱点已全部巩固，干得漂亮！🎉"
+            : "暂无到期复习内容，休息一下~";
+        answerEl.classList.add("hidden");
+        showAnswerBtn.classList.add("hidden");
+        feedbackGroup.classList.add("hidden");
+        return;
+      }
+      renderFormula(questionEl, current.question);
+      renderFormula(answerEl, current.answer);
+      answerEl.classList.add("hidden");
+      showAnswerBtn.classList.remove("hidden");
+      feedbackGroup.classList.add("hidden");
+    }
+
+    /******************** 5. 反馈处理 (核心 SRS) ************************/
+    function recordFeedback(type) {
+      if (!current) return;
+      const now = Date.now();
+      if (type === "remember") {
+        current.level += 1;
+        current.nextReview = now + MS_DAY * 2 ** current.level; // 1,2,4,8...
+        current.weak = false;
+      } else if (type === "vague") {
+        current.level = Math.max(0, current.level - 1);
+        current.nextReview = now + 4 * 60 * 60 * 1000; // 4 小时
+        current.weak = true;
+      } else if (type === "forget") {
+        current.level = 0;
+        current.nextReview = now + 5 * 60 * 1000; // 5 分钟
+        current.weak = true;
+      }
+      current.lastReviewed = now;
+      saveState();
+      showNext();
+    }
+
+    /******************** 6. 薄弱点清单 ************************/
+    function renderWeaknessList() {
+      const weakArr = baseFormulas.filter((f) => f.weak);
+      if (!weakArr.length) {
+        weaknessListEl.innerHTML = "<p>目前没有被标记为薄弱的公式 🎉</p>";
+        return;
+      }
+      const listHtml =
+        "<h2>薄弱点清单</h2><ul>" +
+        weakArr
+          .map(
+            (f) =>
+              `<li><span class="formula" id="q${f.id}"></span>
+               <span> = </span>
+               <span class="formula" id="a${f.id}"></span></li>`
+          )
+          .join("") +
+        "</ul>";
+      weaknessListEl.innerHTML = listHtml;
+
+      // 使用 KaTeX 渲染公式
+      weakArr.forEach((f) => {
+        renderFormula(document.getElementById("q" + f.id), f.question);
+        renderFormula(document.getElementById("a" + f.id), f.answer);
+      });
+    }
+
+    /******************** 7. 事件绑定 ************************/
+    // ——— 按钮：显示答案
+    showAnswerBtn.addEventListener("click", () => {
+      answerEl.classList.toggle("hidden");
+      feedbackGroup.classList.toggle("hidden", !answerEl.classList.contains("hidden"));
+    });
+
+    // ——— 反馈按钮
+    $("rememberBtn").addEventListener("click", () => recordFeedback("remember"));
+    $("vagueBtn").addEventListener("click", () => recordFeedback("vague"));
+    $("forgetBtn").addEventListener("click", () => recordFeedback("forget"));
+
+    // ——— 开始复习
+    $("startReview").addEventListener("click", () => {
+      mode = "review";
+      buildReviewQueue();
+      if (!reviewQueue.length) {
+        alert("当前没有需要复习的公式，等到期后再来吧！");
+        return;
+      }
+      weaknessListEl.classList.add("hidden");
+      showNext();
+    });
+
+    // ——— 薄弱点强化
+    $("weaknessTraining").addEventListener("click", () => {
+      mode = "weak";
+      buildWeakQueue();
+      if (!reviewQueue.length) {
+        alert("没有标记为薄弱的公式，保持良好状态！");
+        return;
+      }
+      weaknessListEl.classList.add("hidden");
+      showNext();
+    });
+
+    // ——— 查看薄弱点
+    $("viewWeakness").addEventListener("click", () => {
+      renderWeaknessList();
+      weaknessListEl.classList.toggle("hidden");
+    });
+
+    // 页面初次加载：如果有到期公式自动提示
+    buildReviewQueue();
+    if (reviewQueue.length) {
+      questionEl.textContent = "有到期公式可复习，点击 “开始复习” ⏱";
+    }
+  </script>
+</body>
+</html>
